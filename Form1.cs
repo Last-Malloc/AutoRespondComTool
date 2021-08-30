@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Diagnostics;
 
 namespace SendCodeServer
 {
@@ -165,7 +166,7 @@ namespace SendCodeServer
         List<char> hexlegal = new () { '0', '1', '2', '3', '4',
             '5', '6', '7', '8', '9',
             'a', 'A', 'b', 'B', 'c', 'C', 
-            'd', 'D', 'e', 'E', 'f', 'F', ' '};
+            'd', 'D', 'e', 'E', 'f', 'F', ' ', '.', '+'};
 
         //添加键
         private void textKey_TextChanged(object sender, EventArgs e)
@@ -428,6 +429,35 @@ namespace SendCodeServer
             }
         }
 
+        //将recStr与data的keys进行模糊匹配
+        //返回第一条成功匹配的key，或空串（匹配失败）
+        //data的key中的.表示任意字符，+表示结尾
+        private string fuzzyMatching(string recStr)
+        {
+            Dictionary<string, List<string>>.KeyCollection keyCol = data.Keys;
+            
+            foreach (string key in keyCol)
+            {
+                int i = 0;
+                while (true)
+                {
+                    if ((recStr.Length - 1 >= i && key.Length - 1 >= i) 
+                        && (recStr[i] == key[i] || key[i] == '.' || key[i] == ' '))
+                        ++i;
+                    else if (key[i] == '+')
+                    {
+                        return key;
+                    }
+                    else
+                        break;
+                    if (i == recStr.Length || i == key.Length)
+                        return key;
+                }
+            }
+            
+            return "";
+        }
+
         //接收到数据
         private void onReceiveData(object o)
         {
@@ -460,7 +490,8 @@ namespace SendCodeServer
                     
                     if (checkAutoSend.Checked)
                     {
-                        if (data.ContainsKey(recStr))
+                        if (data.ContainsKey(recStr) || 
+                            (recStr = fuzzyMatching(recStr)).Length > 0)
                         {
                             List<string> listTmp = data[recStr];
                             foreach (string i in listTmp)
